@@ -3,7 +3,7 @@
 <meta http-equiv="content-type" content="text/html; charset=utf-8">
 
 <!--    JSNascom: A Nascom 2 emulator in JavaScript
-        Copyright (C) 2013 Tommy Thorn
+        Copyright (C) 2011 Tommy Thorn
 
         Contact details: <nascomhomepage@thorn.ws>
 
@@ -30,9 +30,7 @@
         Lancs PR6 9NE UNITED KINGDOM -->
 
 <head>
-<title>JavaScript Nascom 2 Emulator 0.2</title>
-
-<a href="https://github.com/tommythorn/jsnascom"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_green_007200.png" alt="Fork me on GitHub"></a>
+<title>JavaScript Nascom 2 Emulator</title>
 
 <!-- Tricks and help from
  http://matt.might.net/articles/how-to-native-iphone-ipad-apps-in-javascript/
@@ -47,15 +45,13 @@
       href="images/default.png" />
 
 <!-- Prevent scaling -->
- <meta name="viewport" content="user-scalable=no, width=device-width" />
+ <meta name = "viewport" content = "user-scalable=no, width=device-width" />
 
  <!-- Eliminate url and button bars if added to home screen -->
  <meta name="apple-mobile-web-app-capable" content="yes" />
 
  <!-- Choose how to handle the phone status bar -->
  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-
- <!-- <meta name="viewport" content="user-scalable=no,initial-scale=0.8333" /> -->
 
  <style>
 body {
@@ -78,7 +74,7 @@ function BlockMove(event) {
 <script type="text/javascript" src="nascom.js"></script>
 </head>
 <body onload="nascom_init();" onUnload="nascom_unload();">
-<h1>Nascom 2 JavaScript emulator 0.2</h1>
+<h1>Nascom 2 JavaScript emulator</h1>
 <table border="0">
   <tr valign="top"><td>
 
@@ -90,42 +86,12 @@ function BlockMove(event) {
     <button id="clear">Clear memory and reset</button><br>
     <button id="save">Save state</button><br>
     <button id="keys">Start Keys of Kraal</button><br>
-    Load NAS:       <input id="load_nas"      type="file"/><br>
-    Load from tape: <input id="serial_input"  type="file"/><br>
-    Save to tape:   <input id="serial_output" type="file"/><br>
-    Load Intel Hex: <input id="load_ihex"     type="file"/> <button id="reload">RELOAD</button><br>
+    Load NAS:  <input id="load_nas"     type="file"/><br>
+    Load from tape: <input id="serial_input" type="file"/><br>
+    Save to tape: <input id="serial_output" type="file"/><br>
     Docs:<br>
-    <a href="http://www.nascomhomepage.com/pdf/Nassys3.pdf">NAS-SYS 3</a>
-    <a href="http://www.nascomhomepage.com/asm/Nap.txt">Nap</a><br>
-    <textarea id="io"></textarea><br>
-    PORT 0 TAPE:
-    <img id="led0_tape" src=grey.png><br>
-    PORT 0xA:
-    <img id="led4" src=red.png>
-    <img id="led3" src=red.png>
-    <img id="led2" src=red.png>
-    <img id="led1" src=red.png>
+    <a href="http://nascomhomepage.com/pdf/Nassys3.pdf">NAS-SYS 3</a>
+    <a href="http://www.nascomhomepage.com/asm/Nap.txt">Nap</a>
 </table>
-
-<h2>Help needed (2013-12-18)</h2>
-<ul>
-<li>Need modal switch between game mode and text mode. <p>
-
-    Game mode is the current implementation where the focus is on
-    accurately simulating the physical keys.  As Nascoms keyboard have
-    a different layout from modern keyboards, we get akwardness with
-    keys like :/; where on Nascom we have :/* and ;/+ keys. <p>
-
-    In text-mode you will get a 1-1 mapping between keys pressed and
-    the character represented, but it may change the status of the
-    shift key (which breaks games that depend on shift as a key in
-    itself).
-
-<li>Prettier UI
-<li>Persistent state (almost there)
-<li>Smarter loading (auto determine the load kind needed)
-<li>Implement saving.
-<li>Much better Z80 implementation (asm.js aware for bonus points).
-</ul>
 </body>
 </html>

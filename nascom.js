@@ -53,7 +53,6 @@ var keyStates = [];
 var keyp = 0;
 var port0 = 0;
 var tape_led = 0;
-var tape_led_last = 0;
 var led_off_str = "";
 var keym = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 
@@ -94,8 +93,6 @@ function form_enter() {
 var nmi_pending = false;
 
 function nascom_unload() {
-    if (!phys_mem32)
-        return;
     var serialized = "";
     for (i = 0; i < 16384; ++i)
         serialized += phys_mem32[i] + ",";
@@ -103,7 +100,6 @@ function nascom_unload() {
     //console.log("memory="+serialized);
 }
 
-// XXX Shouldn't assume an int, but a char
 function hexdigitValue(ch) {
     if (48 <= ch && ch < 58)
         return ch - 48;
@@ -115,7 +111,6 @@ function hexdigitValue(ch) {
         return -1;
 }
 
-// XXX Shouldn't assume an int, but a char
 function isxdigit(ch) { return hexdigitValue(ch) != -1; }
 
 var fileIOOk = false;
@@ -129,122 +124,9 @@ function start_keys() {
 }
 
 function nascom_load(val) {
-    if (!phys_mem32)
-        return;
     var aval = val.split(",");
     for (i = 0; i < 16384; ++i)
         phys_mem32[i] = parseInt(aval[i]);
-}
-
-function read_hex(s, p, n) {
-    if (s.length <= p + n) {
-        alert("read past end of file");
-        return null;
-    }
-
-    var v = 0;
-
-    while (n > 0 && p < s.length) {
-        var ch = s.charCodeAt(p);
-
-        if (isxdigit(ch))
-            v = 16*v + hexdigitValue(ch);
-        else {
-            alert("read_hex "+ s.charAt(p)+ "@" + p+ " is not a hex digit");
-
-            return null;
-        }
-
-        ++p;
-        --n;
-    }
-
-    return v;
-}
-
-var start_addr = null;
-
-function load_ihex_line(s, p, memory) {
-    // Expect lines like this:
-    // 10010000214601360121470136007EFE09D2190140
-    // That is (without spaces)
-    // CC AAAAA TT DD DD DD .. DD KK
-    // CC is the byte count (# of DD pairs)
-    // AA is the 16-bit address (offset) from base
-    // TT is the type
-    // KK checksum (twos compliment of sum of all bytes)
-
-    var count = read_hex(s, p, 2);
-    if (count == null)
-        return;
-    p += 2;
-
-    var addr = read_hex(s, p, 4);
-    if (addr == null)
-        return;
-    p += 4;
-
-    var type = read_hex(s, p, 2);
-    if (type == null)
-        return;
-    p += 2;
-
-    if (type == 5)
-        start_addr = addr;
-
-    while (count > 0 && p < s.length) {
-        var v = read_hex(s, p, 2);
-        if (v == null)
-            return;
-        p += 2;
-
-        if (addr >= 2048 && addr < 65536)
-            memory[addr] = v;
-        ++addr;
-        --count;
-    }
-
-    var chk = read_hex(s, p, 2);
-    if (chk == null)
-        return null;
-    p += 2;
-
-    // ignore chk
-
-    while (p < s.length && (s.charAt(p) == '\n' || s.charAt(p) == '\r')) {
-        ++p;
-    }
-
-    return p;
-}
-
-function load_ihex(s, memory) {
-    var p = 0;
-
-    start_addr = 4096|0;
-
-    while (p != null && p < s.length && s.charAt(p) == ':') {
-        p = load_ihex_line(s, p + 1, memory);
-    }
-
-    if (p == null || p > s.length)
-        alert("load error");
-    else {
-        z80_reset();
-        replay_kbd("E"+(start_addr|0).toString(16)+"\n");
-    }
-}
-
-function ui_ihex_load() {
-    var reader = new FileReader();
-    reader.onload = (function(theFile) {
-        return function(contents) {
-            load_ihex(contents.target.result, memory);
-        };
-    })(document.getElementById('load_ihex').files[0]);
-
-    // Read in the image file as a data URL.
-    reader.readAsBinaryString(document.getElementById('load_ihex').files[0]);
 }
 
 function nascom_init() {
@@ -328,7 +210,7 @@ function nascom_init() {
     if (document.getElementById("keys"))
         document.getElementById("keys").onclick = start_keys;
 
-    if (fileIOOk && document.getElementById("serial_input"))
+    if (fileIOOk)
         document.getElementById("serial_input").onchange = function() {
         var reader = new FileReader();
         reader.onload = (function(theFile) {
@@ -342,7 +224,7 @@ function nascom_init() {
         reader.readAsBinaryString(this.files[0]);
     }
 
-    if (fileIOOk && document.getElementById('load_nas'))
+    if (fileIOOk)
     document.getElementById('load_nas').onchange = function() {
       var reader = new FileReader();
       reader.onload = (function(theFile) {
@@ -373,14 +255,6 @@ function nascom_init() {
       // Read in the image file as a data URL.
       reader.readAsBinaryString(this.files[0]);
     }
-
-    if (document.getElementById('load_ihex'))
-        document.getElementById('load_ihex').onchange = ui_ihex_load;
-
-    if (document.getElementById('reload'))
-        document.getElementById('reload').onclick  =
-           function (evt) { ui_ihex_load();
-                            return false; };
 
     /* This only works on Chrome */
 
@@ -443,26 +317,28 @@ function nascom_clear() {
 
 var kbd_translation = [
 // 7:NC for all rows
-/* 0 */  "`\r```-\n\007", // 4:shift
-/* 1 */  "``txf5bh", // 6:up
-/* 2 */  "``yzd6nj", // 6:left
-/* 3 */  "``use7mk", // 6:down
-/* 4 */  "``iaw8,l", // 6:right
-/* 5 */  "``oq39.;", // 6:Graph
+/* 0 */  "````````", // 6:NC 5:Ctrl 4:Shift 3:Ctrl 2:NC 1:NC 0:NC
+/* 1 */  "``txf5bh",
+/* 2 */  "``yzd6nj",
+/* 3 */  "``use7mk",
+/* 4 */  "``iaw8,l",
+/* 5 */  "``oq39.;", // 6:Graph?
 /* 6 */  "`[p120/:",
-/* 7 */  "`]r c4vg"
+/* 7 */  "`]r c4vg",
+/* 8 */  "`\r```-\n\007"
 ];
 
 var kbd_translation_shifted = [
 // 7:NC for all rows
-/* 0 */  "``@``=``", // 6:CH 5:Ctrl 4:Shift 3:Ctrl 2:NC 1:NC 0:NC
-/* 1 */  "``TXF%BH", // 6:up
-/* 2 */  "``YZD&NJ", // 6:left
-/* 3 */  "``USE'MK", // 6:down
-/* 4 */  "``IAW(,L", // 6:right
-/* 5 */  "``OQ#)>+", // 6:graph
+/* 0 */  "``@`````", // 6:NC 5:Ctrl 4:Shift 3:Ctrl 2:NC 1:NC 0:NC
+/* 1 */  "``TXF%BH",
+/* 2 */  "``YZD&NJ",
+/* 3 */  "``USE'MK",
+/* 4 */  "``IAW(,L",
+/* 5 */  "``OQ#)>+", // 6:graph?
 /* 6 */  "`\\P!\"^?*",
-/* 7 */  "`_R`C$VG"
+/* 7 */  "`_R`C$VG",
+/* 8 */  "`````=``"
 ];
 
 var gr_row = 5;
@@ -471,14 +347,14 @@ var gr_col = 6;
 function sim_key(ch, down) {
     var row = -1, bit, shifted = 0;
 
-    for (var i = 0; i < 8 && row == -1; ++i)
+    for (var i = 0; i < 9 && row == -1; ++i)
         for (bit = 0; bit < 8; ++bit)
             if (kbd_translation[i][7-bit] == ch) {
                 row = i;
                 break;
             }
 
-    for (var i = 0; i < 8 && row == -1; ++i)
+    for (var i = 0; i < 9 && row == -1; ++i)
         for (bit = 0; bit < 8; ++bit)
             if (kbd_translation_shifted[i][7-bit] == ch) {
                 row = i;
@@ -518,10 +394,8 @@ function nascomCharCode(charCode, down) {
     case 40: row = 3, bit = 6; break; // down arrow
     case 39: row = 4, bit = 6; break; // right arrow
     case 18: row = 5, bit = 6; break; // graph
-// XXX
-    case  8: row = 0, bit = 0; break; // backspace
-// XXX
-    case 13: row = 0, bit = 1; break; // enter
+    case  8: row = 8, bit = 0; break; // backspace
+    case 13: row = 8, bit = 1; break; // enter
     case 91: return; // Command/Apple
     case 186: ch = ';'; break;
     case 187: ch = '='; break;
@@ -686,7 +560,7 @@ function writeport(port, value) {
         port0 = value;
 
         if (1 & down_trans)
-            keyp = (keyp + 1) & 7;
+            keyp++;
         if (2 & down_trans) {
             keyp = 0;
 
@@ -727,72 +601,13 @@ function writeport(port, value) {
             event_next_event = tstates + 25;
         }
 
-        if (tape_led && ((value >> 4) & 1) == 0) {
+        if (tape_led && ((value >> 4) & 1) == 0)
             replay_kbd(led_off_str);
-            tape_led = (value >> 4) & 1;
-        }
-
-
-        if ((tape_led_last ^ value) & 0x10) {
-            tape_led_last = value & 0x10
-            if (document.getElementById("io"))
-                document.getElementById("io").value = "port 0 tape: " + tape_led;
-
-            if (document.getElementById("led0_tape")) {
-                var x = document.getElementById("led0_tape");
-                if (tape_led_last) {
-                    x.setAttribute("src", "red.png");
-                } else {
-                    x.setAttribute("src", "grey.png");
-                }
-            }
-	}
+        tape_led = (value >> 4) & 1;
     }
 
     if (port == 1) {
         console.log("serial out " + value);
-    }
-
-    if (port == 10) {
-        if (document.getElementById("io"))
-            document.getElementById("io").value = "port 10:" + value;
-
-        if (document.getElementById("led1")) {
-            var x = document.getElementById("led1");
-
-            if ((value & 1) == 0) {
-                x.setAttribute("src", "grey.png");
-            } else {
-                x.setAttribute("src", "red.png");
-            }
-        }
-
-      if (document.getElementById("led2")) {
-          var x = document.getElementById("led2")
-          if ((value & 2) == 0) {
-              x.setAttribute("src", "grey.png");
-          } else {
-              x.setAttribute("src", "red.png");
-          }
-      }
-
-      if (document.getElementById("led3")) {
-          var x = document.getElementById("led3");
-          if ((value & 4) == 0) {
-              x.setAttribute("src", "grey.png");
-          } else {
-              x.setAttribute("src", "red.png");
-          }
-      }
-
-      if (document.getElementById("led4")) {
-          var x = document.getElementById("led4");
-          if ((value & 8) == 0) {
-              x.setAttribute("src", "grey.png");
-          } else {
-              x.setAttribute("src", "red.png");
-          }
-      }
     }
 }
 
